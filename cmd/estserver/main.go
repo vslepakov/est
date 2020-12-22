@@ -37,8 +37,11 @@ import (
 
 	"github.com/globalsign/est"
 	"github.com/globalsign/est/internal/basiclogger"
-	"github.com/globalsign/est/internal/mockca"
+
+	//"github.com/globalsign/est/internal/mockca"
 	"github.com/globalsign/pemfile"
+
+	"github.com/vslepakov/est/internal/keyvaultca"
 )
 
 const (
@@ -83,18 +86,18 @@ func main() {
 
 	// Create mock CA. If no mock CA was specified in the configuration file,
 	// create a transient one.
-	var ca *mockca.MockCA
-	if cfg.MockCA != nil {
-		ca, err = mockca.NewFromFiles(cfg.MockCA.Certs, cfg.MockCA.Key)
-		if err != nil {
-			log.Fatalf("failed to create mock CA: %v", err)
-		}
-	} else {
-		ca, err = mockca.NewTransient()
-		if err != nil {
-			log.Fatalf("failed to create mock CA: %v", err)
-		}
-	}
+	var ca *keyvaultca.KeyVaultCA
+	// if cfg.KeyVaultCA != nil {
+	// 	ca, err = mockca.NewFromFiles(cfg.MockCA.Certs, cfg.MockCA.Key)
+	// 	if err != nil {
+	// 		log.Fatalf("failed to create mock CA: %v", err)
+	// 	}
+	// } else {
+	// 	ca, err = mockca.NewTransient()
+	// 	if err != nil {
+	// 		log.Fatalf("failed to create mock CA: %v", err)
+	// 	}
+	// }
 
 	// Create logger. If no log file was specified, log to standard error.
 	var logger est.Logger
