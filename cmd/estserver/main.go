@@ -41,7 +41,7 @@ import (
 	//"github.com/globalsign/est/internal/mockca"
 	"github.com/globalsign/pemfile"
 
-	"github.com/vslepakov/est/internal/keyvaultca"
+	"github.com/globalsign/est/internal/keyvaultca"
 )
 
 const (
