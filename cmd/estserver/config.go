@@ -23,19 +23,18 @@ import (
 
 // config contains the EST server configuration.
 type config struct {
-	MockCA              *mockCAConfig `json:"mock_ca,omitempty"`
-	TLS                 *tlsConfig    `json:"tls,omitempty"`
-	AllowedHosts        []string      `json:"allowed_hosts,omitempty"`
-	HealthCheckPassword string        `json:"healthcheck_password"`
-	RateLimit           int           `json:"rate_limit"`
-	Timeout             int           `json:"timeout"`
-	Logfile             string        `json:"log_file"`
+	KeyVaultCA          *keyvaultCAConfig `json:"keyvault_ca,omitempty"`
+	TLS                 *tlsConfig        `json:"tls,omitempty"`
+	AllowedHosts        []string          `json:"allowed_hosts,omitempty"`
+	HealthCheckPassword string            `json:"healthcheck_password"`
+	RateLimit           int               `json:"rate_limit"`
+	Timeout             int               `json:"timeout"`
+	Logfile             string            `json:"log_file"`
 }
 
 // mockCAConfig contains the mock CA configuration.
-type mockCAConfig struct {
-	Certs string `json:"certificates"`
-	Key   string `json:"private_key"`
+type keyvaultCAConfig struct {
+	URL string `json:"url"`
 }
 
 // tlsConfig contains the server's TLS configuration.
@@ -63,9 +62,8 @@ func configFromFile(filename string) (*config, error) {
 }
 
 const sample = `{
-    "mock_ca": {
-        "certificates": "/path/to/CA/certificates.pem",
-        "private_key": "/path/to/CA/private/key.pem"
+    "keyvault_ca": {
+		"url": "<KeyVault URL>"
     },
     "tls": {
         "listen_address": "localhost:8443",

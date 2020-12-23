@@ -37,8 +37,6 @@ import (
 
 	"github.com/globalsign/est"
 	"github.com/globalsign/est/internal/basiclogger"
-
-	//"github.com/globalsign/est/internal/mockca"
 	"github.com/globalsign/pemfile"
 
 	"github.com/globalsign/est/internal/keyvaultca"
@@ -84,20 +82,12 @@ func main() {
 		cfg = &config{}
 	}
 
-	// Create mock CA. If no mock CA was specified in the configuration file,
-	// create a transient one.
+	// Create keyvault CA.
 	var ca *keyvaultca.KeyVaultCA
-	// if cfg.KeyVaultCA != nil {
-	// 	ca, err = mockca.NewFromFiles(cfg.MockCA.Certs, cfg.MockCA.Key)
-	// 	if err != nil {
-	// 		log.Fatalf("failed to create mock CA: %v", err)
-	// 	}
-	// } else {
-	// 	ca, err = mockca.NewTransient()
-	// 	if err != nil {
-	// 		log.Fatalf("failed to create mock CA: %v", err)
-	// 	}
-	// }
+	ca, err = keyvaultca.New(cfg.KeyVaultCA.URL)
+	if err != nil {
+		log.Fatalf("failed to create keyvault CA: %v", err)
+	}
 
 	// Create logger. If no log file was specified, log to standard error.
 	var logger est.Logger
@@ -115,7 +105,7 @@ func main() {
 	// Create server TLS configuration. If a server TLS configuration was
 	// specified in the configuration file, use it. Otherwise, generate a
 	// transient server key and enroll for a server certificate with the
-	// mock CA, and use the CA certificates as the client CA certificates
+	// keyvault CA, and use the CA certificates as the client CA certificates
 	// also.
 	var listenAddr = defaultListenAddr
 	var serverKey interface{}
@@ -167,9 +157,9 @@ func main() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 
 		cert, err := ca.Enroll(ctx, csr, "", nil)
-		if err != nil {
-			log.Fatalf("failed to enroll for server certificate: %v", err)
-		}
+		// if err != nil {
+		// 	log.Fatalf("failed to enroll for server certificate: %v", err)
+		// }
 
 		cacerts, err := ca.CACerts(ctx, "", nil)
 		if err != nil {

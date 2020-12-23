@@ -1,25 +1,13 @@
-/*
-Copyright (c) 2020 GMO GlobalSign, Inc.
-
-Licensed under the MIT License (the "License"); you may not use this file except
-in compliance with the License. You may obtain a copy of the License at
-
-https://opensource.org/licenses/MIT
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package keyvaultca
 
 import (
 	"context"
 	"crypto/x509"
 	"encoding/asn1"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/globalsign/est"
@@ -34,6 +22,7 @@ const (
 // KeyVaultCA is a mock, non-production certificate authority useful for testing
 // purposes only.
 type KeyVaultCA struct {
+	url string
 }
 
 // CACerts returns the CA certificates, unless the additional path segment is
@@ -47,7 +36,44 @@ func (ca *KeyVaultCA) CACerts(
 		return nil, errors.New("triggered error")
 	}
 
-	return nil, nil
+	resp, err := http.Get(ca.url + "/KeyVault/cacerts")
+	if err != nil {
+		fmt.Println("HTTP call failed:", err)
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	// Success is indicated with 2xx status codes:
+	statusOK := resp.StatusCode >= 200 && resp.StatusCode < 300
+	if !statusOK {
+		fmt.Println("Non-OK HTTP status:", resp.StatusCode)
+		// You may read / inspect response body
+		return nil, fmt.Errorf("http: %v", resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Read Body failed:", err)
+		return nil, err
+	}
+
+	var certs []string
+	if err := json.Unmarshal([]byte(body), &certs); err != nil {
+		fmt.Println("Error:", err)
+	}
+
+	var caCerts []*x509.Certificate
+	for _, element := range certs {
+		cert, err := x509.ParseCertificate([]byte(element))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse certificate: %w", err)
+		}
+
+		caCerts = append(caCerts, cert)
+	}
+
+	return caCerts, nil
 }
 
 // Enroll issues a new certificate with:
@@ -181,4 +207,11 @@ func (ca *KeyVaultCA) TPMEnroll(
 ) ([]byte, []byte, []byte, error) {
 
 	return nil, nil, nil, errors.New("Not Implemented")
+}
+
+// New creates an instance of KeyVaultCA
+func New(url string) (*KeyVaultCA, error) {
+	return &KeyVaultCA{
+		url: url,
+	}, nil
 }

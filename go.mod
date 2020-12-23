@@ -14,4 +14,5 @@ require (
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1
 )
 
-replace github.com/globalsign/est => github.com/vslepakov/est v1.0.5
+//replace github.com/globalsign/est => github.com/vslepakov/est v1.0.5
+replace github.com/globalsign/est => ./internal/keyvaultca
