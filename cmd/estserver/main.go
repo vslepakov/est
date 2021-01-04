@@ -17,9 +17,8 @@ package main
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -133,7 +132,7 @@ func main() {
 
 		listenAddr = cfg.TLS.ListenAddr
 	} else {
-		serverKey, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		serverKey, err = rsa.GenerateKey(rand.Reader, 2048)
 		if err != nil {
 			log.Fatalf("failed to generate server private key: %v", err)
 		}
@@ -157,9 +156,9 @@ func main() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 
 		cert, err := ca.Enroll(ctx, csr, "", nil)
-		// if err != nil {
-		// 	log.Fatalf("failed to enroll for server certificate: %v", err)
-		// }
+		if err != nil {
+			log.Fatalf("failed to enroll for server certificate: %v", err)
+		}
 
 		cacerts, err := ca.CACerts(ctx, "", nil)
 		if err != nil {

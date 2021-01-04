@@ -1,10 +1,13 @@
 package keyvaultca
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/asn1"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -59,13 +62,18 @@ func (ca *KeyVaultCA) CACerts(
 	}
 
 	var certs []string
-	if err := json.Unmarshal([]byte(body), &certs); err != nil {
+	if err := json.Unmarshal(body, &certs); err != nil {
 		fmt.Println("Error:", err)
 	}
 
 	var caCerts []*x509.Certificate
-	for _, element := range certs {
-		cert, err := x509.ParseCertificate([]byte(element))
+	for _, cert := range certs {
+		block, _ := pem.Decode([]byte(cert))
+		if err != nil {
+			return nil, fmt.Errorf("pem.Decode: %w", err)
+		}
+
+		cert, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse certificate: %w", err)
 		}
@@ -99,33 +107,61 @@ func (ca *KeyVaultCA) Enroll(
 ) (*x509.Certificate, error) {
 	// Process any requested triggered errors.
 	if aps == triggerErrorsAPS {
-		// switch csr.Subject.CommonName {
-		// case "Trigger Error Forbidden":
-		// 	return nil, caError{
-		// 		status: http.StatusForbidden,
-		// 		desc:   "triggered forbidden response",
-		// 	}
+		switch csr.Subject.CommonName {
+		case "Trigger Error Forbidden":
+			return nil, caError{
+				status: http.StatusForbidden,
+				desc:   "triggered forbidden response",
+			}
 
-		// case "Trigger Error Deferred":
-		// 	return nil, caError{
-		// 		status:     http.StatusAccepted,
-		// 		desc:       "triggered deferred response",
-		// 		retryAfter: 600,
-		// 	}
+		case "Trigger Error Deferred":
+			return nil, caError{
+				status:     http.StatusAccepted,
+				desc:       "triggered deferred response",
+				retryAfter: 600,
+			}
 
-		// case "Trigger Error Unknown":
-		// 	return nil, errors.New("triggered error")
-		// }
+		case "Trigger Error Unknown":
+			return nil, errors.New("triggered error")
+		}
 	}
 
-	// cert, err := x509.ParseCertificate(der)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to parse certificate: %w", err)
-	// }
+	data := map[string]string{"certificateRequest": base64.StdEncoding.EncodeToString(csr.Raw), "issuerCertificateName": "ContosoRootCA"}
+	json, _ := json.Marshal(data)
 
-	// return cert, nil
+	resp, err := http.Post(ca.url+"/KeyVault/enroll", "application/json", bytes.NewBuffer(json))
+	if err != nil {
+		fmt.Println("HTTP call failed:", err)
+		return nil, err
+	}
 
-	return nil, nil
+	defer resp.Body.Close()
+
+	// Success is indicated with 2xx status codes:
+	statusOK := resp.StatusCode >= 200 && resp.StatusCode < 300
+	if !statusOK {
+		fmt.Println("Non-OK HTTP status:", resp.StatusCode)
+		// You may read / inspect response body
+		return nil, fmt.Errorf("http: %v", resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Read Body failed:", err)
+		return nil, err
+	}
+
+	block, _ := pem.Decode(body)
+	if err != nil {
+		return nil, fmt.Errorf("pem.Decode: %w", err)
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse certificate: %w", err)
+	}
+
+	return cert, nil
 }
 
 // Reenroll implements est.CA but simply passes the request through to Enroll.
